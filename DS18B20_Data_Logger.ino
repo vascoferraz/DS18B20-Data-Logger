@@ -591,6 +591,8 @@ void temperatureLogger(void)
  DateTime now = RTC.now();
  //SD.end();
  //SD.begin(chipSelect);
+
+ sensors.requestTemperatures();
  
  // Open the file. Keep in mind that only one file can be open at a time, so you have to close this one before opening another.
  myFile = SD.open("datalog.txt", FILE_WRITE); 
