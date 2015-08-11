@@ -29,7 +29,7 @@
 
 // Define constants
 #define DS1307_I2C_ADDRESS 0x68 // Each I2C object has a unique bus address, the DS1307 (Real Time Clock) is 0x68
-#define ONE_WIRE_BUS 2 // Define that the input/output data pin from the DS18B20 (temperature sensor) is connected in Arduino's digital I/O pin number 2 
+#define ONE_WIRE_BUS 2 // Define that the input/output data pin from the DS18B20 (temperature sensor) is connected in Arduino's digital I/O pin number 2
 #define TEMPERATURE_PRECISION 12 // Define the precision of the conversion: 9bit, 10bit, 11bit or 12bit
 
 // Declare objects
@@ -50,35 +50,38 @@ byte decToBcd(byte val){return ( (val/10*16) + (val%10) );} // Convert normal de
 byte bcdToDec(byte val){return ( (val/16*10) + (val%16) );} // Convert binary coded decimal to normal decimal numbers
 
 const char chipSelect = 10; // SD module's Chip Select (CS) pin
+const char cardDetect = 3;  // SD module's Card Detect (CD) pin
 
 // The setup function runs only once when you power or reset the board
 void setup ()
 {
-  Serial.begin(9600); // Open serial port and sets data rate to 9600 bps   
+  pinMode(cardDetect, INPUT); // Initialize the cardDetect pin as an input
+  
+  Serial.begin(9600); // Open serial port and sets data rate to 9600 bps
   Wire.begin(); // Start the Wire (I2C communications)
-  RTC.begin(); // Start the RTC Chip   
+  RTC.begin(); // Start the RTC Chip
   sensors.begin(); // Start the DallasTemperature library
-    
+  
   while (! Serial); // Wait until Serial is ready (needed for Leonardo only)
   Serial.setTimeout(10); // Sets the maximum milliseconds to wait for serial data
   
   Serial.println(F("INITIALIZING:")); // Initialize services
-   
+  
   freeMem(); // Print free SRAM in Serial Monitor
   initSerialCommunication(); // Initialize serial communication
   initRTC(); // Initialize Real Time Clock
   initSDcard(); // Initialize SD card
   initOneWire(); // Initialize OneWire devices
-    
+  
   Serial.println();
   Serial.println(F("LOGGER IS RUNNING:"));
   repetitiveStrings();
 }
 
 
-// The loop function runs over and over again forever 
+// The loop function runs over and over again forever
 void loop ()
-{ 
+{
   readClock(); // Read clock and store current time and date into the following variables: second, minute, hour, dayOfWeek, day, month and year
   
   if(Serial.available())
@@ -100,11 +103,11 @@ void loop ()
    printTemperatureInC(temperatureSensor2); // Print the temperature of a device in ºC in Serial Monitor
    Serial.print(F("Device 2 Temperature: "));
    printTemperatureInC(temperatureSensor3); // Print the temperature of a device in ºC in Serial Monitor
-  
+   
    Serial.println();
    repetitiveStrings();
    }
-  
+   
    else if (Serial.peek() == 't')
    {
    Serial.read(); // Clear serial buffer
@@ -124,7 +127,7 @@ void loop ()
    repetitiveStrings();
    }
   
-   else if (Serial.peek() == 'd') 
+   else if (Serial.peek() == 'd')
    {
    Serial.read(); // Clear serial buffer
    Serial.println(F("- Entering date setup -"));
@@ -143,7 +146,7 @@ void loop ()
    repetitiveStrings();
    }
   
-   else if (Serial.peek() == 'u') 
+   else if (Serial.peek() == 'u')
    {
    Serial.read(); // Clear serial buffer
    Serial.println(F("- SD card unmounting -"));
@@ -154,7 +157,7 @@ void loop ()
    repetitiveStrings();
    }
    
-   else if (Serial.peek() == 'm') 
+   else if (Serial.peek() == 'm')
    {
    Serial.read(); // Clear serial buffer
    Serial.println(F("- SD card mounting -"));
@@ -175,12 +178,20 @@ void loop ()
    while (Serial.read() >= 0){;} // Flush remaining characters
   }
   
-  if (second%10 == 0 && previous_second != second)
+  if (digitalRead(cardDetect) == LOW && second%10 == 0 && previous_second != second)
    {
     temperatureLogger();
     previous_second = second;
    }
-  
+   
+  if (digitalRead(cardDetect) == HIGH && second%10 == 0 && previous_second != second)
+   {
+    Serial.println(F("- Datalog status -"));
+    Serial.println(F("Failed - SD card was removed"));
+    Serial.println();
+    SD.end();
+    previous_second = second;
+   }
 }
 
 
@@ -224,17 +235,17 @@ void printDate (void)
   }
     else { Serial.print(now.day(), DEC); Serial.print(F("/")); }
  
-  // Print month in Serial Monitor 
+  // Print month in Serial Monitor
   switch(now.month())
   {
-  case 1:  Serial.print(F("Jan/")); break;    
+  case 1:  Serial.print(F("Jan/")); break;
   case 2:  Serial.print(F("Feb/")); break;
   case 3:  Serial.print(F("Mar/")); break;
   case 4:  Serial.print(F("Apr/")); break;
   case 5:  Serial.print(F("May/")); break;
   case 6:  Serial.print(F("Jun/")); break;
   case 7:  Serial.print(F("Jul/")); break;
-  case 8:  Serial.print(F("Aug/")); break;    
+  case 8:  Serial.print(F("Aug/")); break;
   case 9:  Serial.print(F("Sep/")); break;
   case 10: Serial.print(F("Oct/")); break;
   case 11: Serial.print(F("Nov/")); break;
@@ -304,7 +315,7 @@ void setHour (void)
    {
    delay(1);
    
-   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively) 
+   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively)
    if ( (Serial.peek() >= 0 && Serial.peek() <= 47) || (Serial.peek() >= 58 && Serial.peek() <= 255) )
     {
      Serial.read(); // Clear serial buffer
@@ -312,7 +323,7 @@ void setHour (void)
      setHour();
     }
      
-   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )   
+   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )
     {
      hour = Serial.parseInt();
      if (hour >= 0 && hour <= 23)
@@ -343,7 +354,7 @@ void setMinute (void)
    {
    delay(1);
    
-   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively) 
+   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively)
    if ( (Serial.peek() >= 0 && Serial.peek() <= 47) || (Serial.peek() >= 58 && Serial.peek() <= 255) )
     {
      Serial.read(); // Clear serial buffer
@@ -351,12 +362,12 @@ void setMinute (void)
      setMinute();
     }
      
-   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )   
+   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )
     {
      minute = Serial.parseInt();
      if (minute >= 0 && minute <= 59)
      {adjustClock (0x01, minute);}
-     else {Serial.println(F("Not Valid")); Serial.read(); setMinute();}   
+     else {Serial.println(F("Not Valid")); Serial.read(); setMinute();}
     }
    }
     if (flag == 0)
@@ -382,7 +393,7 @@ void setSecond (void)
    {
    delay(1);
    
-   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively) 
+   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively)
    if ( (Serial.peek() >= 0 && Serial.peek() <= 47) || (Serial.peek() >= 58 && Serial.peek() <= 255) )
     {
      Serial.read(); // Clear serial buffer
@@ -390,12 +401,12 @@ void setSecond (void)
      setSecond();
     }
      
-   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )   
+   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )
     {
      second = Serial.parseInt();
      if (second >= 0 && second <= 59)
      {adjustClock (0x00, second);}
-     else {Serial.println(F("Not Valid")); Serial.read(); setSecond();}   
+     else {Serial.println(F("Not Valid")); Serial.read(); setSecond();}
     }
    }
     if (flag == 0)
@@ -421,7 +432,7 @@ void setDay (void)
    {
    delay(1);
    
-   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively) 
+   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively)
    if ( (Serial.peek() >= 0 && Serial.peek() <= 47) || (Serial.peek() >= 58 && Serial.peek() <= 255) )
     {
      Serial.read(); // Clear serial buffer
@@ -429,7 +440,7 @@ void setDay (void)
      setDay();
     }
      
-   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )   
+   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )
     {
      day = Serial.parseInt();
      
@@ -445,7 +456,7 @@ void setDay (void)
      else if (day >= 1 && day <= 28 && month == 2 && year%4 != 0)
      {adjustClock (0x04, day);}   
 
-     else {Serial.println(F("Not Valid")); Serial.read(); setDay();}   
+     else {Serial.println(F("Not Valid")); Serial.read(); setDay();}
     }
    }
     if (flag == 0)
@@ -471,7 +482,7 @@ void setMonth (void)
    {
    delay(1);
    
-   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively) 
+   // Do not accept the entry if the introduced char is not a number (48 and 57 represents digit 0 and 9 in ASCII, respectively)
    if ( (Serial.peek() >= 0 && Serial.peek() <= 47) || (Serial.peek() >= 58 && Serial.peek() <= 255) )
     {
      Serial.read(); // Clear serial buffer
@@ -479,7 +490,7 @@ void setMonth (void)
      setMonth();
     }
      
-   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )   
+   if ( Serial.peek() >= 48 && Serial.peek() <= 57 )
     {
      month = Serial.parseInt();
      
@@ -589,9 +600,7 @@ void repetitiveStrings(void)
 void temperatureLogger(void)
 {
  DateTime now = RTC.now();
- //SD.end();
- //SD.begin(chipSelect);
-
+ 
  sensors.requestTemperatures();
  
  // Open the file. Keep in mind that only one file can be open at a time, so you have to close this one before opening another.
@@ -600,7 +609,7 @@ void temperatureLogger(void)
  if (!myFile)
  {
   Serial.println(F("- Datalog status -"));
-  Serial.println(F("Failed - SD card was unmounted or removed?"));
+  Serial.println(F("Failed - SD card was unmounted"));
   Serial.println();
  }
  
@@ -635,17 +644,17 @@ void temperatureLogger(void)
   }
     else { myFile.print(now.day(), DEC); myFile.print(F("/")); }
  
-  // Write month into the datalog file    
+  // Write month into the datalog file
   switch(now.month())
   {
-  case 1:  myFile.print(F("Jan/")); break;    
+  case 1:  myFile.print(F("Jan/")); break;
   case 2:  myFile.print(F("Feb/")); break;
   case 3:  myFile.print(F("Mar/")); break;
   case 4:  myFile.print(F("Apr/")); break;
   case 5:  myFile.print(F("May/")); break;
   case 6:  myFile.print(F("Jun/")); break;
   case 7:  myFile.print(F("Jul/")); break;
-  case 8:  myFile.print(F("Aug/")); break;    
+  case 8:  myFile.print(F("Aug/")); break;
   case 9:  myFile.print(F("Sep/")); break;
   case 10: myFile.print(F("Oct/")); break;
   case 11: myFile.print(F("Nov/")); break;
@@ -755,15 +764,15 @@ void initRTC()
    {Serial.println(F("OK"));}
   if (!RTC.isrunning())
    {Serial.println(F("Failed")); delay(7000); initRTC();}
-}  
- 
+}
+
 // Initialize SD card
 void initSDcard()
 {
  Serial.print(F("SD card: "));
   pinMode(SS, OUTPUT); // On the Ethernet Shield, Chip Select (CS) is pin 4. It's set as an output by default.
                        // Note that even if it's not used as the CS pin, the hardware SS pin
-                       // (10 on most Arduino boards, 53 on the Mega) must be left as an output or the SD library functions will not work. 
+                       // (10 on most Arduino boards, 53 on the Mega) must be left as an output or the SD library functions will not work.
   if (!SD.begin(chipSelect))
    {Serial.println(F("Failed")); delay(7000); initSDcard();}
   else Serial.println(F("OK"));
@@ -781,9 +790,9 @@ void initOneWire()
   Serial.println(sensors.getDeviceCount(), DEC);
    
   // Search for all devices on the bus and assign them based on an index.
-  if (!sensors.getAddress(temperatureSensor1, 0)) Serial.println(F("Unable to find address for Device 0")); 
-  if (!sensors.getAddress(temperatureSensor2, 1)) Serial.println(F("Unable to find address for Device 1")); 
-  if (!sensors.getAddress(temperatureSensor3, 2)) Serial.println(F("Unable to find address for Device 2")); 
+  if (!sensors.getAddress(temperatureSensor1, 0)) Serial.println(F("Unable to find address for Device 0"));
+  if (!sensors.getAddress(temperatureSensor2, 1)) Serial.println(F("Unable to find address for Device 1"));
+  if (!sensors.getAddress(temperatureSensor3, 2)) Serial.println(F("Unable to find address for Device 2"));
   
   // Set the resolution of the temperature sensors
   sensors.setResolution(temperatureSensor1, TEMPERATURE_PRECISION);
@@ -807,7 +816,7 @@ void initOneWire()
   printResolution(temperatureSensor3);
   
   // Is parasite power being used? For more information about parasite power you must read the datasheet of the DS18B20 temperature sensor
-  Serial.print(F("Parasite power is: ")); 
+  Serial.print(F("Parasite power is: "));
   if (sensors.isParasitePowerMode()) Serial.println(F("ON"));
   else Serial.println(F("OFF"));
 }
