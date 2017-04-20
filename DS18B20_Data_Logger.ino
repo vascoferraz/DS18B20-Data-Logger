@@ -40,7 +40,7 @@ File myFile; // Declare variable myFile of type File
 
 // Declare variables
 DeviceAddress temperatureSensor1, temperatureSensor2, temperatureSensor3; // Arrays to store addresses
-unsigned int second, minute, hour, dayOfWeek, day, month, year;
+unsigned int second, minute, hour, dayOfTheWeek, day, month, year;
 unsigned char previous_second=1; // This variable is used to write the datalog.txt at a pace of 10 seconds
 unsigned int year_2000; // "year" goes from 0 up to 99 and not from 2000 up to 2099. This variable is used to simplify this situation
 unsigned int counter=0; const unsigned int maxcounter=3000;
@@ -82,7 +82,7 @@ void setup ()
 // The loop function runs over and over again forever
 void loop ()
 {
-  readClock(); // Read clock and store current time and date into the following variables: second, minute, hour, dayOfWeek, day, month and year
+  readClock(); // Read clock and store current time and date into the following variables: second, minute, hour, dayOfTheWeek, day, month and year
   
   if(Serial.available())
   {
@@ -257,7 +257,7 @@ void printDate (void)
   Serial.print(now.year(), DEC);
  
   // Print weekday in Serial Monitor
-  switch(now.dayOfWeek())
+  switch(now.dayOfTheWeek())
   {
   case 0:  Serial.print(F(" | Sunday"));    break;
   case 1:  Serial.print(F(" | Monday"));    break;
@@ -271,7 +271,7 @@ void printDate (void)
 }
 
 
-// Read clock and store current time and date into the following variables: second, minute, hour, dayOfWeek, day, month and year
+// Read clock and store current time and date into the following variables: second, minute, hour, dayOfTheWeek, day, month and year
 void readClock(void)
 {
  Wire.beginTransmission(DS1307_I2C_ADDRESS);
@@ -281,7 +281,7 @@ void readClock(void)
  second = bcdToDec(Wire.read());
  minute = bcdToDec(Wire.read());
  hour = bcdToDec(Wire.read());
- dayOfWeek = bcdToDec(Wire.read());
+ dayOfTheWeek = bcdToDec(Wire.read());
  day = bcdToDec(Wire.read());
  month = bcdToDec(Wire.read());
  year = bcdToDec(Wire.read());
@@ -666,7 +666,7 @@ void temperatureLogger(void)
   myFile.print(now.year(), DEC);
  
   // Write weekday into the datalog file
-  switch(now.dayOfWeek())
+  switch(now.dayOfTheWeek())
   {
   case 0:  myFile.println(F(" | Sunday"));    break;
   case 1:  myFile.println(F(" | Monday"));    break;
