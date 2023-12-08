@@ -16,7 +16,7 @@ For this project, you need the following items:
 - 1x 4.7kOhm resistor
 - 1x 10kOhm resistor
 - Breadboard and wires<br/>
-<br/>
+
 ![alt text](resources/DS18B20-Data-Logger_bb.png?raw=true)
 
 Before compiling the code you need to download, uncompress and install the following libraries: [DallasTemperature](https://github.com/milesburton/Arduino-Temperature-Control-Library), [OneWire](https://github.com/PaulStoffregen/OneWire), [RTClib](https://github.com/adafruit/RTClib) and [SD](https://github.com/adafruit/SD). Keep in mind that there is a standard SD library which comes with the Arduino IDE package but you need to replace it with this one or the code will not compile (renaming the the folder of the standard SD library might cause the same issue, so, I recommend removing it). To install all these libraries simply copy them into the “libraries” folder. Alternatively you can read the official tutorial: [Installing Additional Arduino Libraries](http://arduino.cc/en/Guide/Libraries).
